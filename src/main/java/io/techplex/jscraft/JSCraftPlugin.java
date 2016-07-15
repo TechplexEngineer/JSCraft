@@ -33,6 +33,7 @@ public class JSCraftPlugin extends JavaPlugin implements Listener {
 	private Logger log;
 	
 	private UserManager um;
+	private WebAPI api;
 	
 	
 
@@ -42,7 +43,12 @@ public class JSCraftPlugin extends JavaPlugin implements Listener {
 		getServer().getPluginManager().registerEvents(this, this);
 		
 		um = new UserManager(this);
-
+		api = new WebAPI(7070);
+		try {
+			api.start();
+		} catch (IOException ex) {
+			log.log(Level.SEVERE, "Error when starting API Server", ex);
+		}
 //		this.getDataFolder().mkdir();
 		
 	}
