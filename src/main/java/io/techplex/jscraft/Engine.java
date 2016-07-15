@@ -115,7 +115,6 @@ public class Engine {
 		Thread currentThread = Thread.currentThread();
 		ClassLoader previousClassLoader = currentThread.getContextClassLoader();
 		try {
-			plugin.getLogger().info("starting factory");
 			if ( ! ( plugin instanceof JSCraftPlugin)) {
 				throw new ClassCastException("Class can't be cast");
 			}

@@ -43,7 +43,7 @@ public class JSCraftPlugin extends JavaPlugin implements Listener {
 		getServer().getPluginManager().registerEvents(this, this);
 		
 		um = new UserManager(this);
-		api = new WebAPI(7070);
+		api = new WebAPI(7070, um);
 		try {
 			api.start();
 		} catch (IOException ex) {

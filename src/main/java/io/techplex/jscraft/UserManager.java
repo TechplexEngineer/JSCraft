@@ -58,5 +58,13 @@ public class UserManager {
 
 		return engine.getUUID();
 	}
+
+	public HashMap<UUID, HashMap<UUID,Engine> > getUsers() {
+		return users;
+	}
+
+	public HashMap<UUID,Engine> getEnginesForUser(UUID id) {
+		return users.get(id);
+	}
 	
 }

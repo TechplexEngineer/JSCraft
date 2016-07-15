@@ -17,6 +17,9 @@
  */
 package io.techplex.jscraft;
 
+import java.util.HashMap;
+import java.util.UUID;
+import org.json.JSONObject;
 import org.nanohttpd.NanoHTTPD;
 import org.nanohttpd.NanoHTTPD.Response.Status;
 
@@ -26,14 +29,25 @@ import org.nanohttpd.NanoHTTPD.Response.Status;
  */
 public class WebAPI extends NanoHTTPD {
 	
-	public WebAPI(int port) {
+	private UserManager um;
+	public static final String MIME_JSON = "application/json";
+	
+	public WebAPI(int port, UserManager um) {
 		super(port);
+		this.um = um;
 	}
 	@Override
 	public Response serve(IHTTPSession session){
 		
 		switch (session.getMethod()) {
 			case GET:
+				if (session.getUri().equals("/")) {
+					HashMap<UUID, HashMap<UUID,Engine> > map = um.getUsers();
+					JSONObject resp = new JSONObject(map);
+					return newFixedLengthResponse(Status.OK, MIME_JSON, resp.toString());
+				}
+//				UUID id = UUID.randomUUID();
+//				um.getEnginesForUser(id);
 				
 				return newFixedLengthResponse("Get\n"+session.getUri());
 			case POST:
