@@ -31,6 +31,7 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 
 /**
  *
@@ -79,14 +80,22 @@ public class Engine {
 	
 	/**
 	 * Run some code in the engine
+	 * @note this method should be safe to call from outside the main thread.
 	 * @param code 
 	 */
 	public void eval(String code) {
-		try {
-			eng.eval(code);
-		} catch (ScriptException ex) {
-			plugin.getLogger().log(Level.SEVERE, "Script Exception", ex);
-		}
+		new BukkitRunnable() {
+			@Override
+            public void run() {
+				try {
+					eng.eval(code);
+				} catch (ScriptException ex) {
+					plugin.getLogger().log(Level.SEVERE, "Script Exception", ex);
+				}
+			}
+		
+		}.runTaskLater(this.plugin, 0);
+		
 	}
 	
 	/**

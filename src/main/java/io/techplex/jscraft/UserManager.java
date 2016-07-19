@@ -18,6 +18,7 @@
 package io.techplex.jscraft;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -66,5 +67,21 @@ public class UserManager {
 	public HashMap<UUID,Engine> getEnginesForUser(UUID id) {
 		return users.get(id);
 	}
+
+	Engine getEngine(UUID engineuuid) {
+		for (Map.Entry<UUID, HashMap<UUID, Engine>> entry : users.entrySet()) {
+			HashMap<UUID, Engine> value = entry.getValue();
+			if(value.containsKey(engineuuid)) {
+				return value.get(engineuuid);
+			}	
+		}
+		return null;
+	}
+
+	public JavaPlugin getPlugin() {
+		return plugin;
+	}
+	
+	
 	
 }
