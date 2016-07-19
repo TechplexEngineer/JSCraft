@@ -43,8 +43,10 @@ public class JSCraftPlugin extends JavaPlugin implements Listener {
 		getServer().getPluginManager().registerEvents(this, this);
 		
 		um = new UserManager(this);
-		api = new WebAPI(7070, um);
+		int port = 7070;
+		api = new WebAPI(port, um);
 		try {
+			log.info("Starting WebAPI server on port:"+port);
 			api.start();
 		} catch (IOException ex) {
 			log.log(Level.SEVERE, "Error when starting API Server", ex);

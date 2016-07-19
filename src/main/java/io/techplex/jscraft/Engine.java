@@ -42,6 +42,7 @@ public class Engine {
 	private String name;
 	private final UUID id;
 	private final ScriptEngine eng;
+	private String code; //the last successfully run code
 	
 	public Engine(JavaPlugin plugin, String name) {
 		this(plugin, name, "");
@@ -83,20 +84,31 @@ public class Engine {
 	 * @note this method should be safe to call from outside the main thread.
 	 * @param code 
 	 */
-	public void eval(String code) {
+	public void eval(String jscode) {
 		new BukkitRunnable() {
 			@Override
             public void run() {
 				try {
-					eng.eval(code);
+					eng.eval(jscode);
 				} catch (ScriptException ex) {
 					plugin.getLogger().log(Level.SEVERE, "Script Exception", ex);
 				}
+				code=jscode;
 			}
 		
 		}.runTaskLater(this.plugin, 0);
 		
 	}
+
+	/**
+	 * Get the most recently, successfully executed code.
+	 * @return the code
+	 */
+	public String getCode() {
+		return code;
+	}
+	
+	
 	
 	/**
 	 * Get a new script engine and run the provided code
@@ -111,6 +123,7 @@ public class Engine {
 		} catch (ScriptException ex) {
 			plugin.getLogger().log(Level.SEVERE, "Script Exception", ex);
 		}
+		this.code=code;
 		return eng;
 	}
 	
