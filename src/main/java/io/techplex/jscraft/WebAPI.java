@@ -17,6 +17,8 @@
  */
 package io.techplex.jscraft;
 
+import io.techplex.mcturtles.TurtleCodePlugin;
+import io.techplex.mcturtles.TurtleMgr;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.UUID;
@@ -24,12 +26,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.script.ScriptException;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.World;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.json.JSONArray;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.PluginManager;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.json.JSONObject;
 import org.nanohttpd.NanoHTTPD;
 import org.nanohttpd.NanoHTTPD.Response.Status;
@@ -60,7 +59,7 @@ public class WebAPI extends NanoHTTPD {
 					return newFixedLengthResponse(Status.OK, MIME_JSON, resp.toString());
 				}
 				
-				//show the headerst the request was made with
+				//show the headers the request was made with
 				if (session.getUri().equals("/headers")) {
 					String json = new JSONObject(session.getHeaders()).toString();
 					return newFixedLengthResponse(Status.OK, MIME_JSON, json);
@@ -83,6 +82,13 @@ public class WebAPI extends NanoHTTPD {
 					//user uuid
 					//script name
 					//optional script to start
+//					PluginManager pm = um.getPlugin().getServer().getPluginManager();
+//					Plugin mct = pm.getPlugin("MCTurtles");
+//					if (mct != null) {
+//						TurtleCodePlugin tcp = (TurtleCodePlugin)mct;
+//						TurtleMgr tm = tcp.getTurtleMgr();
+//						
+//					}
 				}
 				
 				//execute js code
@@ -106,6 +112,16 @@ public class WebAPI extends NanoHTTPD {
 			case PUT:
 				return newFixedLengthResponse("Put");
 			case DELETE:
+				
+				//remove a spesific engine
+				if (Pattern.matches("/engine/"+REGEX_UUID, session.getUri())) {
+					String uri = session.getUri();
+					uri = uri.substring(1);
+					UUID engine = UUID.fromString(uri);
+					boolean removed = um.removeEngine(engine);
+
+					return newFixedLengthResponse(Status.OK, MIME_JSON, ""+removed);
+				}
 				return newFixedLengthResponse("Delete");
 			default:
 				return newFixedLengthResponse("Bad Request");

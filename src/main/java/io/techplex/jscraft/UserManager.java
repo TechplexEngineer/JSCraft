@@ -68,7 +68,7 @@ public class UserManager {
 		return users.get(id);
 	}
 
-	Engine getEngine(UUID engineuuid) {
+	public Engine getEngine(UUID engineuuid) {
 		for (Map.Entry<UUID, HashMap<UUID, Engine>> entry : users.entrySet()) {
 			HashMap<UUID, Engine> value = entry.getValue();
 			if(value.containsKey(engineuuid)) {
@@ -76,6 +76,16 @@ public class UserManager {
 			}	
 		}
 		return null;
+	}
+	
+	public boolean removeEngine(UUID engineuuid) {
+		for (Map.Entry<UUID, HashMap<UUID, Engine>> entry : users.entrySet()) {
+			HashMap<UUID, Engine> value = entry.getValue();
+			if(value.containsKey(engineuuid)) {
+				return (value.remove(engineuuid) != null);
+			}	
+		}
+		return false;
 	}
 
 	public JavaPlugin getPlugin() {
