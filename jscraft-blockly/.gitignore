@@ -1,0 +1,5 @@
+web/resources/compiled/msg/*
+web/resources/msg/*
+blockly
+closure-library
+scratch-blocks
