@@ -42,7 +42,7 @@ public class UserManager {
 		users.put(userId, new HashMap<>());
 		
 		//@note testing:
-		createEngine(userId, "testEngine", "");
+		createEngine(userId, "testEngine", "", "", false);
 	}
 	
 	/**
@@ -50,10 +50,12 @@ public class UserManager {
 	 * @param user	Which user the engine will belong to
 	 * @param name	the name of the engine, analogus to program name
 	 * @param js	The user's program.
+	 * @param xml	The blocklyXML describing the users blocks that generated the JS code
+	 * @param start	True to start the JS code running, or false to store the JS and run it later.
 	 * @return 
 	 */
-	public UUID createEngine(UUID user, String name, String js) {
-		Engine engine = new Engine(plugin, name, js);
+	public UUID createEngine(UUID user, String name, String js, String xml, boolean start) {
+		Engine engine = new Engine(plugin, name, js, xml, start);
 
 		users.get(user).put(engine.getUUID(), engine);
 

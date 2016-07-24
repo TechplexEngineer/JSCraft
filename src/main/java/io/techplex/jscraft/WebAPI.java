@@ -26,10 +26,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import jdk.nashorn.internal.scripts.JS;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.json.JSONException;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.nanohttpd.NanoHTTPD;
 import org.nanohttpd.NanoHTTPD.Response.Status;
 
@@ -38,83 +41,171 @@ import org.nanohttpd.NanoHTTPD.Response.Status;
  * @author techplex
  */
 public class WebAPI extends NanoHTTPD {
-	
+
 	private UserManager um;
 	public static final String MIME_JSON = "application/json";
 	public static final String REGEX_UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
-	
+
 	public WebAPI(int port, UserManager um) {
 		super(port);
 		this.um = um;
 	}
 	@Override
 	public Response serve(IHTTPSession session){
-		
+
 		switch (session.getMethod()) {
+
 			case GET:
-				//get all users and their engines
-				if (session.getUri().equals("/")) {
+				//get a list of all users and their engines
+				//GET /script/ BODY: {<USERUUID>: {<ENGINEUUID>:{js:"", xml:"", name:"", uuid:""} } }
+				if (session.getUri().equals("/script")) {
 					HashMap<UUID, HashMap<UUID,Engine> > map = um.getUsers();
 					JSONObject resp = new JSONObject(map);
 					return newFixedLengthResponse(Status.OK, MIME_JSON, resp.toString());
 				}
-				
-				//show the headers the request was made with
-				if (session.getUri().equals("/headers")) {
-					String json = new JSONObject(session.getHeaders()).toString();
-					return newFixedLengthResponse(Status.OK, MIME_JSON, json);
+
+				//Read existing Script and BlockXML by Engine UUID
+				//GET /script/<EngineUUID> BODY: {js:"<JavaScript>", xml:"<xml>"}
+				Pattern p = Pattern.compile("/script/(" + REGEX_UUID + ")");
+				Matcher m = p.matcher(session.getUri());
+				if (m.matches()) {
+
+					UUID engineuuid = UUID.fromString(m.group(1));
+					Engine eng = um.getEngine(engineuuid);
+					if (eng == null) {
+						return newFixedLengthResponse("Post\n" + session.getUri() + "\nInvalid Engine UUID");
+					}
+					JSONObject ret = new JSONObject();
+					ret.append("js", eng.getCode());
+					ret.append("xml", eng.getXml());
+
+					return newFixedLengthResponse(ret.toString());
 				}
-				
-				//get the engines for a spesific user
-				if (Pattern.matches("/"+REGEX_UUID, session.getUri())) {
-					String uri = session.getUri();
-					uri = uri.substring(1);
-					UUID user = UUID.fromString(uri);
-					HashMap<UUID,Engine>  map = um.getUsers().get(user);
-					JSONObject resp = new JSONObject(map);
-					return newFixedLengthResponse(Status.OK, MIME_JSON, resp.toString());
+
+				//Start existing by Engine UUID
+				//GET /script/start/<EngineUUID>
+				p = Pattern.compile("/script/start/(" + REGEX_UUID + ")");
+				m = p.matcher(session.getUri());
+				if (m.matches()) {
+					UUID engineuuid = UUID.fromString(m.group(1));
+					Engine eng = um.getEngine(engineuuid);
+					if (eng == null) {
+						return newFixedLengthResponse("Post\n" + session.getUri() + "\nInvalid Engine UUID");
+					}
+					eng.Start();
+					return newFixedLengthResponse("Engine Started");
+				}
+
+				//Stop existing by Engine UUID
+				//GET /script/stop/<EngineUUID>
+				p = Pattern.compile("/script/stop/(" + REGEX_UUID + ")");
+				m = p.matcher(session.getUri());
+				if (m.matches()) {
+					UUID engineuuid = UUID.fromString(m.group(1));
+					Engine eng = um.getEngine(engineuuid);
+					if (eng == null) {
+						return newFixedLengthResponse("Post\n" + session.getUri() + "\nInvalid Engine UUID");
+					}
+					eng.Stop();
+					return newFixedLengthResponse("Engine Stopped");
 				}
 
 				return newFixedLengthResponse("Get\n"+session.getUri());
 			case POST:
-				
-				if(session.getUri().equals("create")) {
-					//user uuid
-					//script name
-					//optional script to start
-//					PluginManager pm = um.getPlugin().getServer().getPluginManager();
-//					Plugin mct = pm.getPlugin("MCTurtles");
-//					if (mct != null) {
-//						TurtleCodePlugin tcp = (TurtleCodePlugin)mct;
-//						TurtleMgr tm = tcp.getTurtleMgr();
-//						
-//					}
-				}
-				
-				//execute js code
-				Pattern p = Pattern.compile("/code/("+REGEX_UUID+")");
-				Matcher m = p.matcher(session.getUri());
-				if(m.matches()) {
-					
-					
-					String cl = session.getHeaders().get("content-length");
-					int length = Integer.parseInt(cl);
 
-					String body = convertStreamToString(session.getInputStream(), length);
-					UUID engineuuid = UUID.fromString(m.group(1));
-					Engine e = um.getEngine(engineuuid);
-					if (e == null) return newFixedLengthResponse("Post\n"+session.getUri()+"\nInvalid Engine UUID");
-					e.eval(body);
-					return newFixedLengthResponse(body);
+				//Add new Script for User
+				//POST /script/new/<UserUUID> BODY: {name:"", js:"<JavaScript>", xml:"<xml>", start:true} //start is optional others required
+				p = Pattern.compile("/script/new/(" + REGEX_UUID + ")");
+				m = p.matcher(session.getUri());
+				if (m.matches()) {
+
+					try {
+						JSONTokener tokener = new JSONTokener(session.getInputStream());
+						JSONObject body = new JSONObject(tokener);
+
+						if (!body.has("js"))
+							return newFixedLengthResponse("Missing 'js' field");
+						if (!body.has("xml"))
+							return newFixedLengthResponse("Missing 'xml' field");
+						if (!body.has("name"))
+							return newFixedLengthResponse("Missing 'name' field");
+
+						Boolean start;
+						if (!body.has("start"))
+							start = false; //if missing optional start field, default to false.
+						else
+							start = body.getBoolean("start");
+
+						UUID userUUID = UUID.fromString(m.group(1));
+						String name = body.getString("name");
+						String js = body.getString("js");
+						String xml = body.getString("xml");
+
+						UUID engineUUID = um.createEngine(userUUID, name, js, xml, start);
+
+						return newFixedLengthResponse(engineUUID.toString());
+					} catch (JSONException ex) {
+						return newFixedLengthResponse("Got Invalid JSON"); //@todo make this error better.
+					}
 				}
-					
-					return newFixedLengthResponse("Post\n"+session.getUri());
-			case PUT:
-				return newFixedLengthResponse("Put");
+
+				//Update existing Script and BlockXML by Engine UUID
+				//POST /script/<EngineUUID>  BODY: {name:"", js:"<JavaScript>", xml:"<xml>", start:true} //start, name are optional others require
+				p = Pattern.compile("/script/(" + REGEX_UUID + ")");
+				m = p.matcher(session.getUri());
+				if (m.matches()) {
+
+					UUID engineuuid = UUID.fromString(m.group(1));
+					Engine eng = um.getEngine(engineuuid);
+					if (eng == null) {
+						return newFixedLengthResponse("Post\n" + session.getUri() + "\nInvalid Engine UUID");
+					}
+
+					try {
+						JSONTokener tokener = new JSONTokener(session.getInputStream());
+						JSONObject body = new JSONObject(tokener);
+
+						if (!body.has("js"))
+							return newFixedLengthResponse("Missing 'js' field");
+						if (!body.has("xml"))
+							return newFixedLengthResponse("Missing 'xml' field");
+
+						String name;
+						if (!body.has("name"))
+							name = eng.getName(); //if missing optional name field, default to previous name.
+						else
+							name = body.getString("name");
+
+						Boolean start;
+						if (!body.has("start"))
+							start = false; //if missing optional start field, default to false.
+						else
+							start = body.getBoolean("start");
+
+
+
+						String js = body.getString("js");
+						String xml = body.getString("xml");
+
+						eng.Stop();
+						eng.setName(name);
+						eng.setCode(js, xml);
+
+						if (start) {
+							eng.Start();
+						}
+
+						return newFixedLengthResponse(eng.getUUID().toString());
+					} catch (JSONException ex) {
+						return newFixedLengthResponse("Got Invalid JSON"); //@todo make this error better.
+					}
+				}
+
+				return newFixedLengthResponse("Post\n"+session.getUri());
 			case DELETE:
-				
-				//remove a spesific engine
-				if (Pattern.matches("/engine/"+REGEX_UUID, session.getUri())) {
+				//Delete existing by Engine UUID
+				//DELETE /script/<EngineUUID>
+				if (Pattern.matches("/script/"+REGEX_UUID, session.getUri())) {
 					String uri = session.getUri();
 					uri = uri.substring(1);
 					UUID engine = UUID.fromString(uri);
@@ -123,16 +214,17 @@ public class WebAPI extends NanoHTTPD {
 					return newFixedLengthResponse(Status.OK, MIME_JSON, ""+removed);
 				}
 				return newFixedLengthResponse("Delete");
+
 			default:
 				return newFixedLengthResponse("Bad Request");
-				//return newFixedLengthResponse(Status.BAD_REQUEST, "application/json", "{\"status\":\"Unsupported Method");
+
 		}
 	}
 	private String convertStreamToString(java.io.InputStream is) {
 		java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
 		return s.hasNext() ? s.next() : "";
 	}
-	
+
 	private String convertStreamToString(java.io.InputStream is, int length) {
 		StringBuilder sb = new StringBuilder();
 		try {
@@ -144,5 +236,5 @@ public class WebAPI extends NanoHTTPD {
 		}
 		return sb.toString();
 	}
-	
+
 }

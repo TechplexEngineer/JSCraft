@@ -17,19 +17,15 @@
  */
 package io.techplex.jscraft;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
-import java.io.InputStreamReader;
-import java.nio.file.Files;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
-import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -41,18 +37,28 @@ public class Engine {
 	private JavaPlugin plugin;
 	private String name;
 	private final UUID id;
-	private final ScriptEngine eng;
-	private String code; //the last successfully run code
+	private ScriptEngine eng;
+	private String js; //the last successfully run code
+	private String xml;
+	private boolean started = false;
 	
 	public Engine(JavaPlugin plugin, String name) {
-		this(plugin, name, "");
+		this(plugin, name, "", "", false);
 	}
 	
-	public Engine(JavaPlugin plugin, String name, String code) {
+	public Engine(JavaPlugin plugin, String name, String js, String xml, boolean start) {
 		this.plugin = plugin;
 		this.name = name;
 		this.id = UUID.randomUUID();
-		this.eng = getNewScriptEngine(code);
+		if (start) {
+			this.eng = getNewScriptEngine(js);
+			this.js = js;
+			this.xml = xml;
+		} else {
+			this.js = js;
+			this.xml = xml;
+			this.eng = getNewScriptEngine("");
+		}
 	}
 
 	/**
@@ -69,6 +75,14 @@ public class Engine {
 	 */
 	public void setName(String name) {
 		this.name = name;
+	}
+
+	/**
+	 * Get the blockly xml string that represents the code
+	 * @return 
+	 */
+	public String getXml() {
+		return xml;
 	}
 	
 	/**
@@ -91,9 +105,9 @@ public class Engine {
 				try {
 					eng.eval(jscode);
 				} catch (ScriptException ex) {
-					plugin.getLogger().log(Level.SEVERE, "Script Exception", ex);
+					plugin.getLogger().log(Level.SEVERE, "Script Exception", ex); //@todo it would be nice to show these errors to the user somehow.
 				}
-				code=jscode;
+				js=jscode;
 			}
 		
 		}.runTaskLater(this.plugin, 0);
@@ -105,10 +119,44 @@ public class Engine {
 	 * @return the code
 	 */
 	public String getCode() {
-		return code;
+		return js;
 	}
 	
+	/**
+	 * Update the engine's code
+	 * @param js	Set an update js program
+	 * @param xml	Set an updated blockly XML string
+	 */
+	void setCode(String js, String xml) {
+		//@todo should we stop the engine here? No, only if they start the code.
+		this.js = js;
+		this.xml = xml;
+	}
 	
+	/**
+	 * Start the js code running in the script engine.
+	 * @return false if code already running, true otherwise.
+	 */
+	public boolean Start() {
+		if (started) {
+			//code already started.
+			return false;
+		}
+		this.eval(js);
+		started = true;
+		return true;
+		
+	}
+	
+	public boolean Stop() {
+		if(!started) {
+			return false;
+		}
+		this.eng = getNewScriptEngine("");
+		//@todo ask engine to kill itself?
+		started = false;
+		return true;
+	}
 	
 	/**
 	 * Get a new script engine and run the provided code
@@ -123,7 +171,6 @@ public class Engine {
 		} catch (ScriptException ex) {
 			plugin.getLogger().log(Level.SEVERE, "Script Exception", ex);
 		}
-		this.code=code;
 		return eng;
 	}
 	
@@ -176,6 +223,5 @@ public class Engine {
 		plugin.getLogger().info("null");
 		return null;
 	}
-
 	
 }
