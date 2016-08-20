@@ -17,8 +17,6 @@
  */
 package io.techplex.jscraft;
 
-import io.techplex.mcturtles.TurtleCodePlugin;
-import io.techplex.mcturtles.TurtleMgr;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.UUID;
@@ -26,10 +24,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import jdk.nashorn.internal.scripts.JS;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.PluginManager;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;

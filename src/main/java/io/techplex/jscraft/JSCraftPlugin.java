@@ -63,6 +63,9 @@ public class JSCraftPlugin extends JavaPlugin implements Listener {
 	// Fired when plugin is disabled
 	@Override
 	public void onDisable() {
+		if (api.wasStarted()) {
+			api.stop();
+		}
 	}
 	
 	/**
